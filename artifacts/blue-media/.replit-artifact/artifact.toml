@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Blue Media"
+version = "1.0.0"
+id = "artifacts/blue-media"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23694
+
+[services.development]
+run = "pnpm --filter @workspace/blue-media run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/blue-media", "run", "build" ]
+publicDir = "artifacts/blue-media/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23694"
+BASE_PATH = "/"
