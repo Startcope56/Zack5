@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Home, Users, MessageCircle, Bell, LogOut, Shield, ChevronDown } from "lucide-react";
+import { Home, Users, MessageCircle, Bell, Shield, ChevronDown, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useGetUnreadCount, getGetUnreadCountQueryKey } from "@workspace/api-client-react";
@@ -12,20 +12,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   if (!user) return <>{children}</>;
 
-  const navItems = [
+  const unreadCount = unread?.count ?? 0;
+
+  const bottomTabs = [
     { icon: Home, href: "/feed", label: "Home" },
     { icon: Users, href: "/friends", label: "Friends" },
     { icon: MessageCircle, href: "/chat", label: "Messages" },
+    { icon: Bell, href: "/notifications", label: "Notifs" },
   ];
 
-  const unreadCount = unread?.count ?? 0;
-
   return (
-    <div className="min-h-screen" style={{ background: "#f0f2f5" }}>
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 w-full shadow-md"
+    <div className="min-h-screen pb-16" style={{ background: "#f0f2f5" }}>
+
+      {/* Top Bar — logo + profile only */}
+      <header className="sticky top-0 z-50 w-full shadow-sm"
         style={{ background: "linear-gradient(135deg, #1877f2 0%, #0a6bc7 100%)" }}>
-        <div className="max-w-5xl mx-auto flex h-14 items-center justify-between px-3 gap-2">
+        <div className="max-w-2xl mx-auto flex h-12 items-center justify-between px-3">
 
           {/* Logo */}
           <Link href="/feed">
@@ -35,47 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
 
-          {/* Nav Icons */}
-          <nav className="flex items-center gap-0.5">
-            {navItems.map((item) => {
-              const isActive = location === item.href || location.startsWith(`${item.href}/`);
-              return (
-                <Link key={item.href} href={item.href}>
-                  <button
-                    title={item.label}
-                    className={`relative flex items-center justify-center w-12 h-10 rounded-lg transition-all ${
-                      isActive
-                        ? "bg-white/25 shadow-inner"
-                        : "hover:bg-white/15"
-                    }`}
-                  >
-                    <item.icon className={`h-5 w-5 ${isActive ? "text-white" : "text-white/80"}`} />
-                    {isActive && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-white rounded-full" />}
-                  </button>
-                </Link>
-              );
-            })}
-
-            {/* Notifications */}
-            <Link href="/notifications">
-              <button
-                title="Notifications"
-                className={`relative flex items-center justify-center w-12 h-10 rounded-lg transition-all ${
-                  location === "/notifications" ? "bg-white/25 shadow-inner" : "hover:bg-white/15"
-                }`}
-              >
-                <Bell className={`h-5 w-5 ${location === "/notifications" ? "text-white" : "text-white/80"}`} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-md border border-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-                {location === "/notifications" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-white rounded-full" />}
-              </button>
-            </Link>
-          </nav>
-
-          {/* Profile Dropdown */}
+          {/* Profile menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-full pl-1 pr-2 py-1 transition">
@@ -130,9 +92,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-3 py-4">
+      {/* Page content */}
+      <main className="max-w-2xl mx-auto px-3 py-3">
         {children}
       </main>
+
+      {/* Bottom Tab Bar — FB Lite style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+        <div className="max-w-2xl mx-auto flex">
+          {bottomTabs.map((tab) => {
+            const isActive = location === tab.href || location.startsWith(`${tab.href}/`);
+            return (
+              <Link key={tab.href} href={tab.href} className="flex-1">
+                <button
+                  className={`relative w-full flex flex-col items-center justify-center py-2 transition-colors ${
+                    isActive ? "text-blue-600" : "text-gray-500"
+                  }`}
+                >
+                  {tab.href === "/notifications" && unreadCount > 0 && (
+                    <span className="absolute top-1 right-1/4 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 border border-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                  <tab.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 1.8} />
+                  {isActive && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full" />
+                  )}
+                </button>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
     </div>
   );
 }

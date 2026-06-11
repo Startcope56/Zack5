@@ -19,7 +19,7 @@ const REACTIONS = [
 ];
 
 function CommentSection({ postId }: { postId: number }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
   const { data: comments } = useListPostComments(postId, { query: { queryKey: getListPostCommentsQueryKey(postId) } });
@@ -35,7 +35,7 @@ function CommentSection({ postId }: { postId: number }) {
   };
 
   return (
-    <div className="border-t border-gray-100 pt-3 px-4 pb-2 space-y-2">
+    <div className="border-t border-gray-100 pt-3 px-4 pb-3 space-y-2">
       {comments?.map((c: Comment) => (
         <div key={c.id} className="flex gap-2 items-start">
           <Link href={`/profile/${c.author?.id}`}>
@@ -78,14 +78,33 @@ function CommentSection({ postId }: { postId: number }) {
   );
 }
 
+function ReactionPicker({ onPick }: { onPick: (type: string) => void }) {
+  return (
+    <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-2xl shadow-xl px-2 py-1.5 flex gap-1 z-20">
+      {REACTIONS.map(r => (
+        <button
+          key={r.type}
+          onPointerDown={e => { e.preventDefault(); onPick(r.type); }}
+          className="text-2xl hover:scale-125 transition-transform p-0.5"
+          title={r.label}
+        >
+          {r.emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PostCard({ post }: { post: any }) {
   const [showComments, setShowComments] = useState(false);
-  const [hoveredReaction, setHoveredReaction] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const queryClient = useQueryClient();
   const reactPost = useReactToPost();
   const unreactPost = useRemovePostReaction();
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   const toggleReaction = async (type: string) => {
+    setShowPicker(false);
     if (post.myReaction === type) {
       await unreactPost.mutateAsync({ id: post.id });
     } else {
@@ -94,11 +113,32 @@ function PostCard({ post }: { post: any }) {
     queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
   };
 
+  const handleReactPress = () => {
+    if (post.myReaction) {
+      unreactPost.mutateAsync({ id: post.id }).then(() =>
+        queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() })
+      );
+    } else {
+      setShowPicker(v => !v);
+    }
+  };
+
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showPicker]);
+
   const totalReactions = post.reactions?.reduce((s: number, r: any) => s + r.count, 0) ?? 0;
   const myReactionEmoji = REACTIONS.find(r => r.type === post.myReaction)?.emoji;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden post-card">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <Link href={`/profile/${post.author?.id}`}>
@@ -139,35 +179,28 @@ function PostCard({ post }: { post: any }) {
             ))}
           </div>
           <span className="text-xs text-gray-400 ml-1">{totalReactions}</span>
-          <span className="ml-auto text-xs text-gray-400 hover:underline cursor-pointer"
-            onClick={() => setShowComments(v => !v)}>
+          <button
+            className="ml-auto text-xs text-gray-400 hover:underline"
+            onClick={() => setShowComments(v => !v)}
+          >
             {post.commentCount > 0 ? `${post.commentCount} comment${post.commentCount > 1 ? "s" : ""}` : ""}
-          </span>
+          </button>
         </div>
       )}
 
       {/* Action Buttons */}
       <div className="border-t border-gray-100 mx-4" />
       <div className="flex px-2 py-1">
-        {/* React button with hover picker */}
-        <div className="relative flex-1"
-          onMouseEnter={() => setHoveredReaction(true)}
-          onMouseLeave={() => setHoveredReaction(false)}>
-          {hoveredReaction && (
-            <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-2xl shadow-xl px-2 py-1.5 flex gap-1 z-20">
-              {REACTIONS.map(r => (
-                <button key={r.type}
-                  onClick={() => toggleReaction(r.type)}
-                  className="text-2xl hover:scale-125 transition-transform p-0.5 reaction-btn"
-                  title={r.label}>
-                  {r.emoji}
-                </button>
-              ))}
-            </div>
-          )}
+
+        {/* React button */}
+        <div className="relative flex-1" ref={pickerRef}>
+          {showPicker && <ReactionPicker onPick={toggleReaction} />}
           <button
-            onClick={() => post.myReaction ? unreactPost.mutateAsync({ id: post.id }).then(() => queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() })) : toggleReaction("heart")}
-            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition reaction-btn ${post.myReaction ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:bg-gray-100"}`}>
+            onClick={handleReactPress}
+            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition active:scale-95 ${
+              post.myReaction ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:bg-gray-100"
+            }`}
+          >
             <span className="text-base">{myReactionEmoji || "🩷"}</span>
             <span>{post.myReaction ? REACTIONS.find(r => r.type === post.myReaction)?.label : "React"}</span>
           </button>
@@ -175,12 +208,15 @@ function PostCard({ post }: { post: any }) {
 
         <button
           onClick={() => setShowComments(v => !v)}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition ${showComments ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:bg-gray-100"}`}>
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition active:scale-95 ${
+            showComments ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:bg-gray-100"
+          }`}
+        >
           <MessageSquare className="h-4 w-4" />
           <span>Comment</span>
         </button>
 
-        <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition">
+        <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition active:scale-95">
           <Share2 className="h-4 w-4" />
           <span>Share</span>
         </button>
@@ -195,11 +231,13 @@ export default function FeedPage() {
   const { user, token } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
+  const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: posts, isLoading } = useListPosts({});
   const createPost = useCreatePost();
@@ -213,6 +251,18 @@ export default function FeedPage() {
     return () => { socket.off("new_post"); };
   }, [token, queryClient]);
 
+  const openComposer = () => {
+    setOpen(true);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  const closeComposer = () => {
+    setOpen(false);
+    setContent("");
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handlePost = async () => {
     if (!content.trim() && !imageFile) return;
     try {
@@ -221,9 +271,7 @@ export default function FeedPage() {
       if (imageFile && token) {
         await uploadFile(`/api/posts/${res.id}/upload-image`, imageFile, token);
       }
-      setContent("");
-      setImageFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      closeComposer();
       queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
     } catch (err: any) {
       toast({ title: "Failed to post", description: err.message, variant: "destructive" });
@@ -234,8 +282,9 @@ export default function FeedPage() {
 
   return (
     <div className="space-y-3">
-      {/* Composer */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+
+      {/* Composer trigger */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
         <div className="flex gap-3 items-center">
           <Avatar className="h-10 w-10 shrink-0">
             <AvatarImage src={user?.profilePicture || undefined} />
@@ -244,61 +293,97 @@ export default function FeedPage() {
             </AvatarFallback>
           </Avatar>
           <button
-            onClick={() => document.getElementById("post-textarea")?.focus()}
-            className="flex-1 text-left px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-400 text-sm cursor-text">
+            onClick={openComposer}
+            className="flex-1 text-left px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition text-gray-400 text-sm cursor-pointer select-none"
+          >
             What's on your mind, {user?.name?.split(" ")[0]}?
           </button>
         </div>
-
-        <textarea
-          id="post-textarea"
-          placeholder={`What's on your mind, ${user?.name?.split(" ")[0]}?`}
-          className={`w-full mt-3 resize-none outline-none text-gray-800 text-sm placeholder-gray-400 bg-transparent ${content ? "block" : "hidden"}`}
-          rows={3}
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          onFocus={e => {
-            const el = e.target as HTMLTextAreaElement;
-            el.classList.remove("hidden");
-            el.classList.add("block");
-            (document.querySelector('[data-post-btn]') as HTMLElement)?.classList.remove("hidden");
-          }}
-        />
-
-        {imageFile && (
-          <div className="mt-3 relative rounded-xl overflow-hidden border border-gray-200">
-            <img src={URL.createObjectURL(imageFile)} alt="preview" className="max-h-48 w-auto mx-auto object-cover" />
-            <button onClick={() => setImageFile(null)}
-              className="absolute top-2 right-2 bg-gray-800/60 hover:bg-gray-800/80 text-white rounded-full p-1 transition">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex gap-1">
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} />
-            <button onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-green-600 hover:bg-green-50 text-sm font-medium transition">
-              <ImageIcon className="h-4 w-4" /> Photo
-            </button>
-          </div>
+        <div className="mt-2 pt-2 border-t border-gray-100 flex">
           <button
-            data-post-btn
-            onClick={handlePost}
-            disabled={(!content.trim() && !imageFile) || createPost.isPending || isUploading}
-            className="px-5 py-1.5 rounded-full text-white text-sm font-bold transition disabled:opacity-50 active:scale-95"
-            style={{ background: "linear-gradient(135deg,#1877f2,#0a6bc7)", boxShadow: "0 2px 8px rgba(24,119,242,0.3)" }}>
-            {isUploading || createPost.isPending ? "Posting..." : "Post"}
+            onClick={openComposer}
+            className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-green-600 hover:bg-green-50 active:bg-green-100 text-sm font-medium transition"
+          >
+            <ImageIcon className="h-4 w-4" /> Photo
           </button>
         </div>
       </div>
+
+      {/* Composer modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40"
+          onClick={e => { if (e.target === e.currentTarget) closeComposer(); }}>
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span className="font-bold text-gray-900">Create Post</span>
+              <button onClick={closeComposer} className="p-1 rounded-full hover:bg-gray-100 transition">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Author */}
+            <div className="flex items-center gap-3 px-4 pt-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={user?.profilePicture || undefined} />
+                <AvatarFallback className="font-bold" style={{ background: "linear-gradient(135deg,#1877f2,#0a6bc7)", color: "white" }}>
+                  {user?.name?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-semibold text-gray-900">{user?.name}</span>
+            </div>
+
+            {/* Text area */}
+            <div className="px-4 pt-2 pb-3">
+              <textarea
+                ref={textareaRef}
+                placeholder={`What's on your mind, ${user?.name?.split(" ")[0]}?`}
+                className="w-full resize-none outline-none text-gray-800 text-base placeholder-gray-400 bg-transparent min-h-[100px]"
+                rows={4}
+                value={content}
+                onChange={e => setContent(e.target.value)}
+              />
+            </div>
+
+            {/* Image preview */}
+            {imageFile && (
+              <div className="mx-4 mb-3 relative rounded-xl overflow-hidden border border-gray-200">
+                <img src={URL.createObjectURL(imageFile)} alt="preview" className="max-h-48 w-auto mx-auto object-cover" />
+                <button onClick={() => setImageFile(null)}
+                  className="absolute top-2 right-2 bg-gray-800/60 hover:bg-gray-800/80 text-white rounded-full p-1 transition">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="px-4 pb-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+              <div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*"
+                  onChange={e => setImageFile(e.target.files?.[0] || null)} />
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-green-600 hover:bg-green-50 text-sm font-medium transition">
+                  <ImageIcon className="h-4 w-4" /> Add Photo
+                </button>
+              </div>
+              <button
+                onClick={handlePost}
+                disabled={(!content.trim() && !imageFile) || createPost.isPending || isUploading}
+                className="px-6 py-2 rounded-full text-white text-sm font-bold transition disabled:opacity-50 active:scale-95"
+                style={{ background: "linear-gradient(135deg,#1877f2,#0a6bc7)", boxShadow: "0 2px 8px rgba(24,119,242,0.3)" }}
+              >
+                {isUploading || createPost.isPending ? "Posting..." : "Post"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Posts */}
       {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse">
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse">
               <div className="flex gap-3 items-center mb-3">
                 <div className="h-10 w-10 rounded-full bg-gray-200" />
                 <div className="space-y-1.5">
