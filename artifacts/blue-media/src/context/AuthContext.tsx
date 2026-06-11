@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from "react";
-import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -14,12 +14,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("bluemedia_token"));
-  const [userId, setUserId] = useState<number | null>(() => {
-    const id = localStorage.getItem("bluemedia_userId");
-    return id ? parseInt(id, 10) : null;
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem("bluemedia_token");
+    // Register immediately on first render so queries fired before login also work
+    setAuthTokenGetter(() => localStorage.getItem("bluemedia_token"));
+    return saved;
   });
-  
+
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: isUserLoading } = useGetMe({
@@ -30,25 +31,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Automatically logout on unauth
-  useEffect(() => {
-    if (token && !isUserLoading && !user) {
-       // logout();
-    }
-  }, [token, isUserLoading, user]);
-
   const login = useCallback((newToken: string, newUserId: number) => {
     localStorage.setItem("bluemedia_token", newToken);
     localStorage.setItem("bluemedia_userId", newUserId.toString());
+    setAuthTokenGetter(() => localStorage.getItem("bluemedia_token"));
     setToken(newToken);
-    setUserId(newUserId);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem("bluemedia_token");
     localStorage.removeItem("bluemedia_userId");
+    setAuthTokenGetter(null);
     setToken(null);
-    setUserId(null);
     queryClient.clear();
   }, [queryClient]);
 
