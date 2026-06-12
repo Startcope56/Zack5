@@ -1,20 +1,26 @@
 import { useState, useRef } from "react";
 import { useParams } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { 
-  useGetUser, 
-  useGetUserStats, 
-  useListPosts, 
+import {
+  useGetUser,
+  useGetUserStats,
+  useListPosts,
   useGetFriendshipStatus,
+  useGetFollowStatus,
   useUpdateUser,
   useSendFriendRequest,
   useAcceptFriendRequest,
   useRemoveFriend,
   useCreateConversation,
+  useFollowUser,
+  useUnfollowUser,
+  useReportUser,
+  useClaimBlueBadge,
   getGetUserQueryKey,
   getListPostsQueryKey,
   getGetUserStatsQueryKey,
-  getGetFriendshipStatusQueryKey
+  getGetFriendshipStatusQueryKey,
+  getGetFollowStatusQueryKey,
 } from "@workspace/api-client-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -27,8 +33,23 @@ import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/lib/upload";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, MapPin, Link as LinkIcon, CalendarDays, UserPlus, UserMinus, UserCheck, MessageSquare } from "lucide-react";
+import { Camera, MapPin, Link as LinkIcon, CalendarDays, UserPlus, UserMinus, UserCheck, MessageSquare, UserRoundCheck, UserRoundX, Flag, MoreHorizontal, BadgeCheck } from "lucide-react";
 import { useLocation } from "wouter";
+
+const REPORT_REASONS = [
+  { value: "sexual_content", label: "Sexual Content" },
+  { value: "harassment", label: "Harassment / Bullying" },
+  { value: "hate_speech", label: "Hate Speech" },
+  { value: "violence", label: "Violence" },
+  { value: "spam", label: "Spam / Fake" },
+];
+
+function BlueBadge() {
+  return (
+    <span title="Verified — Blue Badge" className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-bold ml-1 shrink-0"
+      style={{ background: "#1877f2" }}>✓</span>
+  );
+}
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -44,32 +65,32 @@ export default function ProfilePage() {
   const { data: stats } = useGetUserStats(profileId);
   const { data: posts } = useListPosts({ userId: profileId });
   const { data: friendshipStatus } = useGetFriendshipStatus(profileId, { query: { enabled: !isOwnProfile, queryKey: ["friendshipStatus", profileId] } });
+  const { data: followStatus, refetch: refetchFollow } = useGetFollowStatus(profileId, {
+    query: { enabled: !isOwnProfile, queryKey: getGetFollowStatusQueryKey(profileId) }
+  });
 
   const updateUser = useUpdateUser();
   const sendRequest = useSendFriendRequest();
   const acceptRequest = useAcceptFriendRequest();
   const removeFriend = useRemoveFriend();
   const createConversation = useCreateConversation();
+  const followUser = useFollowUser();
+  const unfollowUser = useUnfollowUser();
+  const reportUser = useReportUser();
+  const claimBadge = useClaimBlueBadge();
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editData, setEditData] = useState({
-    name: "",
-    bio: "",
-    location: "",
-    website: ""
-  });
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [showMenu, setShowMenu] = useState(false);
+  const [editData, setEditData] = useState({ name: "", bio: "", location: "", website: "" });
 
   const handleEditOpen = () => {
     if (profileUser) {
-      setEditData({
-        name: profileUser.name || "",
-        bio: profileUser.bio || "",
-        location: profileUser.location || "",
-        website: profileUser.website || ""
-      });
+      setEditData({ name: profileUser.name || "", bio: profileUser.bio || "", location: profileUser.location || "", website: profileUser.website || "" });
       setEditOpen(true);
     }
   };
@@ -79,9 +100,9 @@ export default function ProfilePage() {
       await updateUser.mutateAsync({ id: profileId, data: editData });
       setEditOpen(false);
       queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(profileId) });
-      toast({ title: "Profile updated" });
+      toast({ title: "Profile updated!" });
     } catch (err: any) {
-      toast({ title: "Error updating profile", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -91,7 +112,7 @@ export default function ProfilePage() {
     try {
       await uploadFile(`/api/users/${profileId}/upload-avatar`, file, token);
       queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(profileId) });
-      toast({ title: "Profile picture updated" });
+      toast({ title: "Profile picture updated!" });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     }
@@ -103,9 +124,30 @@ export default function ProfilePage() {
     try {
       await uploadFile(`/api/users/${profileId}/upload-cover`, file, token);
       queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(profileId) });
-      toast({ title: "Cover photo updated" });
+      toast({ title: "Cover photo updated!" });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleFollow = async () => {
+    try {
+      await followUser.mutateAsync({ id: profileId });
+      queryClient.invalidateQueries({ queryKey: getGetFollowStatusQueryKey(profileId) });
+      queryClient.invalidateQueries({ queryKey: getGetUserStatsQueryKey(profileId) });
+      toast({ title: `Following ${profileUser?.name}!` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      await unfollowUser.mutateAsync({ id: profileId });
+      queryClient.invalidateQueries({ queryKey: getGetFollowStatusQueryKey(profileId) });
+      queryClient.invalidateQueries({ queryKey: getGetUserStatsQueryKey(profileId) });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -147,19 +189,36 @@ export default function ProfilePage() {
     }
   };
 
-  if (profileLoading) {
-    return <div className="text-center py-8">Loading profile...</div>;
-  }
+  const handleReport = async () => {
+    if (!reportReason) return;
+    try {
+      const res = await reportUser.mutateAsync({ id: profileId, data: { reason: reportReason as any } });
+      setReportOpen(false);
+      setReportReason("");
+      toast({ title: "📩 " + (res.message || "Report submitted") });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
-  if (!profileUser) {
-    return <div className="text-center py-8">User not found</div>;
-  }
+  const handleClaimBadge = async () => {
+    try {
+      const res = await claimBadge.mutateAsync(undefined as any);
+      queryClient.invalidateQueries({ queryKey: getGetUserQueryKey(profileId) });
+      toast({ title: "🎉 " + (res.message || "Blue Badge claimed!") });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  if (profileLoading) return <div className="text-center py-8">Loading profile...</div>;
+  if (!profileUser) return <div className="text-center py-8">User not found</div>;
 
   return (
     <div className="space-y-6 pb-20">
       {/* Cover and Avatar */}
       <div className="relative bg-card rounded-xl overflow-hidden shadow-sm">
-        <div 
+        <div
           className="h-48 md:h-64 w-full bg-muted relative group cursor-pointer"
           onClick={() => isOwnProfile && coverInputRef.current?.click()}
         >
@@ -174,7 +233,7 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
-        
+
         <div className="px-4 pb-4">
           <div className="relative flex justify-between items-end -mt-12 md:-mt-16 mb-4">
             <div className="relative group cursor-pointer" onClick={() => isOwnProfile && avatarInputRef.current?.click()}>
@@ -188,60 +247,101 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-            
-            <div className="flex gap-2">
+
+            <div className="flex gap-2 items-center">
               {isOwnProfile ? (
-                <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={handleEditOpen}>Edit Profile</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Name</Label>
-                        <Input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+                <>
+                  {!profileUser.blueBadge && (
+                    <Button size="sm" variant="outline" onClick={handleClaimBadge} disabled={claimBadge.isPending} className="border-blue-400 text-blue-600">
+                      💙 Claim Badge
+                    </Button>
+                  )}
+                  <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                    <DialogTrigger asChild>
+                      <Button onClick={handleEditOpen}>Edit Profile</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Name</Label>
+                          <Input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Bio</Label>
+                          <Textarea value={editData.bio} onChange={(e) => setEditData({ ...editData, bio: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Location</Label>
+                          <Input value={editData.location} onChange={(e) => setEditData({ ...editData, location: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Website</Label>
+                          <Input value={editData.website} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
+                        </div>
+                        <Button onClick={handleEditSave} className="w-full" disabled={updateUser.isPending}>Save Changes</Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Bio</Label>
-                        <Textarea value={editData.bio} onChange={(e) => setEditData({ ...editData, bio: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Location</Label>
-                        <Input value={editData.location} onChange={(e) => setEditData({ ...editData, location: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Website</Label>
-                        <Input value={editData.website} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
-                      </div>
-                      <Button onClick={handleEditSave} className="w-full">Save Changes</Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                </>
               ) : (
                 <>
+                  {/* Follow button */}
+                  {followStatus?.isFollowing ? (
+                    <Button variant="secondary" size="sm" onClick={handleUnfollow} disabled={unfollowUser.isPending}>
+                      <UserRoundX className="h-4 w-4 mr-1" /> Unfollow
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handleFollow} disabled={followUser.isPending}>
+                      <UserRoundCheck className="h-4 w-4 mr-1" /> Follow
+                    </Button>
+                  )}
+                  {/* Friend button */}
                   {friendshipStatus?.status === 'none' && (
-                    <Button onClick={handleAddFriend}><UserPlus className="h-4 w-4 mr-2"/> Add Friend</Button>
+                    <Button variant="outline" size="sm" onClick={handleAddFriend}><UserPlus className="h-4 w-4 mr-1" /> Add Friend</Button>
                   )}
                   {friendshipStatus?.status === 'pending_sent' && (
-                    <Button variant="secondary" disabled>Pending Request</Button>
+                    <Button variant="secondary" size="sm" disabled>Pending</Button>
                   )}
                   {friendshipStatus?.status === 'pending_received' && (
-                    <Button onClick={handleAcceptFriend}><UserCheck className="h-4 w-4 mr-2"/> Accept Request</Button>
+                    <Button variant="outline" size="sm" onClick={handleAcceptFriend}><UserCheck className="h-4 w-4 mr-1" /> Accept</Button>
                   )}
                   {friendshipStatus?.status === 'friends' && (
-                    <Button variant="secondary" onClick={handleUnfriend}><UserMinus className="h-4 w-4 mr-2"/> Unfriend</Button>
+                    <Button variant="secondary" size="sm" onClick={handleUnfriend}><UserMinus className="h-4 w-4 mr-1" /> Unfriend</Button>
                   )}
-                  <Button variant="default" onClick={handleMessage}><MessageSquare className="h-4 w-4 mr-2"/> Message</Button>
+                  <Button size="sm" onClick={handleMessage}><MessageSquare className="h-4 w-4 mr-1" /> Message</Button>
+                  {/* 3-dots menu */}
+                  <div className="relative">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMenu(v => !v)}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                    {showMenu && (
+                      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-30 w-44 overflow-hidden">
+                        <button
+                          onClick={() => { setShowMenu(false); setReportOpen(true); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                        >
+                          <Flag className="h-4 w-4" /> Report User
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold">{profileUser.name}</h1>
+            <div className="flex items-center gap-1 flex-wrap">
+              <h1 className="text-2xl font-bold">{profileUser.name}</h1>
+              {profileUser.blueBadge && <BlueBadge />}
+              {profileUser.isAdmin && (
+                <span className="px-2 py-0.5 text-[10px] bg-yellow-100 text-yellow-700 rounded-full font-bold uppercase tracking-wide ml-1">Admin</span>
+              )}
+              {(profileUser as any).restricted && (
+                <span className="px-2 py-0.5 text-[10px] bg-orange-100 text-orange-700 rounded-full font-bold ml-1">Restricted</span>
+              )}
+            </div>
             {profileUser.bio && <p className="text-muted-foreground">{profileUser.bio}</p>}
           </div>
 
@@ -253,7 +353,7 @@ export default function ProfilePage() {
             )}
             {profileUser.website && (
               <div className="flex items-center gap-1">
-                <LinkIcon className="h-4 w-4" /> 
+                <LinkIcon className="h-4 w-4" />
                 <a href={profileUser.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">{profileUser.website}</a>
               </div>
             )}
@@ -263,8 +363,10 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex gap-4 mt-4 text-sm">
-            <div><span className="font-semibold text-foreground">{stats?.friendCount || 0}</span> friends</div>
-            <div><span className="font-semibold text-foreground">{stats?.postCount || 0}</span> posts</div>
+            <div><span className="font-semibold text-foreground">{stats?.friendCount || 0}</span> <span className="text-muted-foreground">friends</span></div>
+            <div><span className="font-semibold text-foreground">{stats?.followerCount || followStatus?.followerCount || 0}</span> <span className="text-muted-foreground">followers</span></div>
+            <div><span className="font-semibold text-foreground">{stats?.followingCount || 0}</span> <span className="text-muted-foreground">following</span></div>
+            <div><span className="font-semibold text-foreground">{stats?.postCount || 0}</span> <span className="text-muted-foreground">posts</span></div>
           </div>
         </div>
       </div>
@@ -282,17 +384,28 @@ export default function ProfilePage() {
                 <AvatarImage src={post.author?.profilePicture || undefined} />
                 <AvatarFallback>{post.author?.name?.[0]}</AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <span className="font-semibold">{post.author?.name}</span>
+              <div className="flex flex-col flex-1">
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">{post.author?.name}</span>
+                  {post.author?.blueBadge && <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-white text-[8px] font-bold" style={{ background: "#1877f2" }}>✓</span>}
+                </div>
                 <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="whitespace-pre-wrap">{post.content}</p>
+            <CardContent>
+              {(post as any).bgColor ? (
+                <div className="rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-center min-h-[120px] px-4 py-6 text-white text-center" style={{ background: (post as any).bgColor }}>
+                    <p className="text-white text-lg font-bold whitespace-pre-wrap drop-shadow-sm">{post.content}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{post.content}</p>
+              )}
               {post.imageUrl && (
-                <div className="rounded-lg overflow-hidden border">
+                <div className="rounded-lg overflow-hidden border mt-3">
                   <img src={post.imageUrl} alt="Post content" className="w-full object-cover max-h-96" />
                 </div>
               )}
@@ -300,11 +413,35 @@ export default function ProfilePage() {
           </Card>
         ))}
         {posts?.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
             No posts yet.
           </div>
         )}
       </div>
+
+      {/* Report User Dialog */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Report User 🚩</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Why are you reporting <strong>{profileUser.name}</strong>?</p>
+            {REPORT_REASONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setReportReason(r.value)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm text-left transition ${
+                  reportReason === r.value ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                {reportReason === r.value && <span>●</span>} {r.label}
+              </button>
+            ))}
+            <Button onClick={handleReport} className="w-full" variant="destructive" disabled={!reportReason || reportUser.isPending}>
+              {reportUser.isPending ? "Submitting..." : "Submit Report"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

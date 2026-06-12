@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserStats {
-  friendCount: number;
-  postCount: number;
-  followerCount: number;
-  followingCount: number;
+export interface BadgeClaim {
+  ok: boolean;
+  blueBadge: boolean;
+  /** @nullable */
+  expiresAt?: Date | null;
+  message?: string;
 }

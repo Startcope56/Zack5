@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserStats {
-  friendCount: number;
-  postCount: number;
+export interface FollowStatus {
+  isFollowing: boolean;
   followerCount: number;
   followingCount: number;
 }

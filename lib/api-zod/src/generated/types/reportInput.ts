@@ -5,10 +5,8 @@
  * Blue Media social platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ReportInputReason } from './reportInputReason';
 
-export interface UserStats {
-  friendCount: number;
-  postCount: number;
-  followerCount: number;
-  followingCount: number;
+export interface ReportInput {
+  reason: ReportInputReason;
 }

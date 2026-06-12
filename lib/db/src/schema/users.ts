@@ -14,6 +14,11 @@ export const usersTable = pgTable("users", {
   website: text("website"),
   privacy: text("privacy").notNull().default("public"),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isBlueAI: boolean("is_blue_ai").notNull().default(false),
+  blueBadge: boolean("blue_badge").notNull().default(false),
+  blueBadgeClaimedAt: timestamp("blue_badge_claimed_at", { withTimezone: true }),
+  restricted: boolean("restricted").notNull().default(false),
+  banned: boolean("banned").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -9,6 +9,12 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface OkResponse {
+  ok: boolean;
+  /** @nullable */
+  message?: string | null;
+}
+
 export interface RegisterInput {
   email: string;
   name: string;
@@ -57,6 +63,12 @@ export interface User {
   website?: string | null;
   privacy?: UserPrivacy;
   isAdmin?: boolean;
+  isBlueAI?: boolean;
+  blueBadge?: boolean;
+  /** @nullable */
+  blueBadgeClaimedAt?: string | null;
+  restricted?: boolean;
+  banned?: boolean;
   createdAt: string;
 }
 
@@ -87,6 +99,22 @@ export interface UserUpdate {
 export interface UserStats {
   friendCount: number;
   postCount: number;
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface FollowStatus {
+  isFollowing: boolean;
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface BadgeClaim {
+  ok: boolean;
+  blueBadge: boolean;
+  /** @nullable */
+  expiresAt?: string | null;
+  message?: string;
 }
 
 export interface UploadResult {
@@ -143,6 +171,8 @@ export interface Post {
   content: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  bgColor?: string | null;
   author?: User;
   reactions?: PostReaction[];
   commentCount?: number;
@@ -155,6 +185,8 @@ export interface PostInput {
   content: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  bgColor?: string | null;
 }
 
 export type ReactionInputType = typeof ReactionInputType[keyof typeof ReactionInputType];
@@ -182,6 +214,61 @@ export interface Comment {
 
 export interface CommentInput {
   content: string;
+}
+
+export type ReportInputReason = typeof ReportInputReason[keyof typeof ReportInputReason];
+
+
+export const ReportInputReason = {
+  sexual_content: 'sexual_content',
+  harassment: 'harassment',
+  hate_speech: 'hate_speech',
+  violence: 'violence',
+  spam: 'spam',
+} as const;
+
+export interface ReportInput {
+  reason: ReportInputReason;
+}
+
+export type ReportStatus = typeof ReportStatus[keyof typeof ReportStatus];
+
+
+export const ReportStatus = {
+  pending: 'pending',
+  resolved: 'resolved',
+  dismissed: 'dismissed',
+} as const;
+
+export interface Report {
+  id: number;
+  reporterId: number;
+  /** @nullable */
+  reportedPostId?: number | null;
+  /** @nullable */
+  reportedUserId?: number | null;
+  reason: string;
+  status: ReportStatus;
+  createdAt: string;
+  reporter?: User;
+  reportedUser?: User;
+  reportedPost?: Post;
+}
+
+export type AdminActionAction = typeof AdminActionAction[keyof typeof AdminActionAction];
+
+
+export const AdminActionAction = {
+  remove_post: 'remove_post',
+  restrict_account: 'restrict_account',
+  remove_account: 'remove_account',
+  ban_account: 'ban_account',
+  dismiss_report: 'dismiss_report',
+  restore_account: 'restore_account',
+} as const;
+
+export interface AdminAction {
+  action: AdminActionAction;
 }
 
 export type ConversationType = typeof ConversationType[keyof typeof ConversationType];
@@ -271,6 +358,9 @@ export const NotificationType = {
   post_reaction: 'post_reaction',
   post_comment: 'post_comment',
   message: 'message',
+  blue_badge: 'blue_badge',
+  report_received: 'report_received',
+  follow: 'follow',
 } as const;
 
 export interface Notification {
@@ -304,5 +394,9 @@ userId?: number;
 
 export type ListPostsParams = {
 userId?: number;
+};
+
+export type GetAdminReportsParams = {
+status?: string;
 };
 

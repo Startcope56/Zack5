@@ -8,19 +8,15 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: auth
-    description: Authentication
   - name: users
-    description: User profiles
   - name: friends
-    description: Friend system
   - name: posts
-    description: Posts and feed
   - name: conversations
-    description: Messages and chat
   - name: notifications
-    description: Notifications
+  - name: follows
+  - name: reports
+  - name: admin
 
 paths:
   /healthz:
@@ -191,6 +187,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserStats"
+
+  /users/{id}/follow:
+    post:
+      operationId: followUser
+      tags: [follows]
+      summary: Follow a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Followed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+    delete:
+      operationId: unfollowUser
+      tags: [follows]
+      summary: Unfollow a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /users/{id}/follow-status:
+    get:
+      operationId: getFollowStatus
+      tags: [follows]
+      summary: Get follow status for a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Follow status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowStatus"
+
+  /users/{id}/followers:
+    get:
+      operationId: getFollowers
+      tags: [follows]
+      summary: Get followers of a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Followers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /users/{id}/following:
+    get:
+      operationId: getFollowing
+      tags: [follows]
+      summary: Get users followed by a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Following
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /users/claim-badge:
+    post:
+      operationId: claimBlueBadge
+      tags: [users]
+      summary: Claim the free blue badge (3 hour window)
+      responses:
+        "200":
+          description: Badge claimed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadgeClaim"
+
+  /users/{id}/report:
+    post:
+      operationId: reportUser
+      tags: [reports]
+      summary: Report a user profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
 
   /friends:
     get:
@@ -483,6 +614,31 @@ paths:
         "204":
           description: Deleted
 
+  /posts/{id}/report:
+    post:
+      operationId: reportPost
+      tags: [reports]
+      summary: Report a post
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
   /conversations:
     get:
       operationId: listConversations
@@ -529,6 +685,19 @@ paths:
       responses:
         "201":
           description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /conversations/blue-ai:
+    post:
+      operationId: startBlueAIConversation
+      tags: [conversations]
+      summary: Start or get Blue AI conversation
+      responses:
+        "200":
+          description: Conversation with Blue AI
           content:
             application/json:
               schema:
@@ -614,7 +783,26 @@ paths:
               $ref: "#/components/schemas/MessageInput"
       responses:
         "201":
-          description: Sent
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /conversations/{id}/messages/upload:
+    post:
+      operationId: uploadMessageImage
+      tags: [conversations]
+      summary: Upload an image in a message
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Image message sent
           content:
             application/json:
               schema:
@@ -644,7 +832,7 @@ paths:
               $ref: "#/components/schemas/MessageReactionInput"
       responses:
         "200":
-          description: Reaction set
+          description: Reacted
 
   /conversations/{id}/read:
     post:
@@ -663,7 +851,7 @@ paths:
 
   /conversations/{id}/participants:
     post:
-      operationId: addGroupParticipant
+      operationId: addParticipant
       tags: [conversations]
       summary: Add participant to group
       parameters:
@@ -684,7 +872,7 @@ paths:
 
   /conversations/{id}/participants/{userId}:
     delete:
-      operationId: removeGroupParticipant
+      operationId: removeParticipant
       tags: [conversations]
       summary: Remove participant from group
       parameters:
@@ -754,6 +942,91 @@ paths:
         "200":
           description: Marked
 
+  /notifications/{id}:
+    delete:
+      operationId: deleteNotification
+      tags: [notifications]
+      summary: Delete a notification
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/reports:
+    get:
+      operationId: getAdminReports
+      tags: [admin]
+      summary: Get all reports (admin only)
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+
+  /admin/reports/{id}/action:
+    post:
+      operationId: adminReportAction
+      tags: [admin]
+      summary: Take action on a report (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAction"
+      responses:
+        "200":
+          description: Action taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /admin/users/{id}/action:
+    post:
+      operationId: adminUserAction
+      tags: [admin]
+      summary: Take action on a user (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAction"
+      responses:
+        "200":
+          description: Action taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -762,6 +1035,15 @@ components:
       properties:
         status:
           type: string
+
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: ["string", "null"]
 
     RegisterInput:
       type: object
@@ -830,6 +1112,17 @@ components:
           enum: [public, friends]
         isAdmin:
           type: boolean
+        isBlueAI:
+          type: boolean
+        blueBadge:
+          type: boolean
+        blueBadgeClaimedAt:
+          type: ["string", "null"]
+          format: date-time
+        restricted:
+          type: boolean
+        banned:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -851,12 +1144,41 @@ components:
 
     UserStats:
       type: object
-      required: [friendCount, postCount]
+      required: [friendCount, postCount, followerCount, followingCount]
       properties:
         friendCount:
           type: integer
         postCount:
           type: integer
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+
+    FollowStatus:
+      type: object
+      required: [isFollowing, followerCount, followingCount]
+      properties:
+        isFollowing:
+          type: boolean
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+
+    BadgeClaim:
+      type: object
+      required: [ok, blueBadge]
+      properties:
+        ok:
+          type: boolean
+        blueBadge:
+          type: boolean
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        message:
+          type: string
 
     UploadResult:
       type: object
@@ -915,6 +1237,8 @@ components:
           type: string
         imageUrl:
           type: ["string", "null"]
+        bgColor:
+          type: ["string", "null"]
         author:
           $ref: "#/components/schemas/User"
         reactions:
@@ -936,6 +1260,8 @@ components:
         content:
           type: string
         imageUrl:
+          type: ["string", "null"]
+        bgColor:
           type: ["string", "null"]
 
     PostReaction:
@@ -979,6 +1305,60 @@ components:
       properties:
         content:
           type: string
+
+    ReportInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum:
+            - sexual_content
+            - harassment
+            - hate_speech
+            - violence
+            - spam
+
+    Report:
+      type: object
+      required: [id, reporterId, reason, status, createdAt]
+      properties:
+        id:
+          type: integer
+        reporterId:
+          type: integer
+        reportedPostId:
+          type: ["integer", "null"]
+        reportedUserId:
+          type: ["integer", "null"]
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, resolved, dismissed]
+        createdAt:
+          type: string
+          format: date-time
+        reporter:
+          $ref: "#/components/schemas/User"
+        reportedUser:
+          $ref: "#/components/schemas/User"
+        reportedPost:
+          $ref: "#/components/schemas/Post"
+
+    AdminAction:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum:
+            - remove_post
+            - restrict_account
+            - remove_account
+            - ban_account
+            - dismiss_report
+            - restore_account
 
     Conversation:
       type: object
@@ -1113,7 +1493,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [friend_request, friend_accepted, post_reaction, post_comment, message]
+          enum: [friend_request, friend_accepted, post_reaction, post_comment, message, blue_badge, report_received, follow]
         fromUserId:
           type: ["integer", "null"]
         fromUser:

@@ -28,15 +28,19 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "User not found" });
     return;
   }
+  if (user.banned) {
+    res.status(403).json({ error: "Account banned" });
+    return;
+  }
   (req as Request & { user: typeof user }).user = user;
   next();
 }
 
 export function getUser(req: Request) {
-  return (req as Request & { user: { id: number; email: string; name: string; isAdmin: boolean; privacy: string; profilePicture: string | null; coverPicture: string | null; bio: string | null; location: string | null; website: string | null; createdAt: Date; updatedAt: Date; pinHash: string } }).user;
+  return (req as any).user as typeof usersTable.$inferSelect;
 }
 
-export function formatUser(user: { id: number; email: string; name: string; profilePicture: string | null; coverPicture: string | null; bio: string | null; location: string | null; website: string | null; privacy: string; isAdmin: boolean; createdAt: Date }) {
+export function formatUser(user: typeof usersTable.$inferSelect) {
   return {
     id: user.id,
     email: user.email,
@@ -48,6 +52,11 @@ export function formatUser(user: { id: number; email: string; name: string; prof
     website: user.website,
     privacy: user.privacy,
     isAdmin: user.isAdmin,
+    isBlueAI: user.isBlueAI ?? false,
+    blueBadge: user.blueBadge ?? false,
+    blueBadgeClaimedAt: user.blueBadgeClaimedAt ? user.blueBadgeClaimedAt.toISOString() : null,
+    restricted: user.restricted ?? false,
+    banned: user.banned ?? false,
     createdAt: user.createdAt.toISOString(),
   };
 }

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Home, Users, MessageCircle, Bell, Shield, ChevronDown, LogOut } from "lucide-react";
+import { Home, Users, MessageCircle, Bell, Shield, ChevronDown, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useGetUnreadCount, getGetUnreadCountQueryKey } from "@workspace/api-client-react";
@@ -24,7 +24,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen pb-16" style={{ background: "#f0f2f5" }}>
 
-      {/* Top Bar — logo + profile only */}
+      {/* Top Bar */}
       <header className="sticky top-0 z-50 w-full shadow-sm"
         style={{ background: "linear-gradient(135deg, #1877f2 0%, #0a6bc7 100%)" }}>
         <div className="max-w-2xl mx-auto flex h-12 items-center justify-between px-3">
@@ -41,12 +41,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-full pl-1 pr-2 py-1 transition">
-                <Avatar className="h-7 w-7 border-2 border-white/40">
-                  <AvatarImage src={user.profilePicture || undefined} />
-                  <AvatarFallback className="text-xs font-bold" style={{ background: "#0a6bc7", color: "white" }}>
-                    {user.name[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-7 w-7 border-2 border-white/40">
+                    <AvatarImage src={user.profilePicture || undefined} />
+                    <AvatarFallback className="text-xs font-bold" style={{ background: "#0a6bc7", color: "white" }}>
+                      {user.name[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {(user as any).blueBadge && (
+                    <span className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full text-white text-[7px] font-bold border border-white"
+                      style={{ background: "#1877f2" }}>✓</span>
+                  )}
+                </div>
                 <span className="text-white text-sm font-medium max-w-[80px] truncate hidden sm:block">{user.name.split(" ")[0]}</span>
                 <ChevronDown className="h-3.5 w-3.5 text-white/70" />
               </button>
@@ -61,12 +67,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-semibold text-gray-800">{user.name}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-semibold text-gray-800">{user.name}</span>
+                      {(user as any).blueBadge && (
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-white text-[8px] font-bold" style={{ background: "#1877f2" }}>✓</span>
+                      )}
+                    </div>
                     <span className="text-xs text-blue-500">View your profile →</span>
                   </div>
                 </DropdownMenuItem>
               </Link>
               <DropdownMenuSeparator className="my-1" />
+              <Link href="/settings">
+                <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-gray-700">
+                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <Settings className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <span className="font-medium">Settings</span>
+                </DropdownMenuItem>
+              </Link>
               {user.isAdmin && (
                 <Link href="/admin">
                   <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2.5 rounded-lg hover:bg-yellow-50 text-yellow-700">
@@ -97,7 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom Tab Bar — FB Lite style */}
+      {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
         <div className="max-w-2xl mx-auto flex">
           {bottomTabs.map((tab) => {

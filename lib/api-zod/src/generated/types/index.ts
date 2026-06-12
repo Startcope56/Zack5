@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminAction';
+export * from './adminActionAction';
 export * from './authResponse';
+export * from './badgeClaim';
 export * from './changePasswordInput';
 export * from './comment';
 export * from './commentInput';
@@ -14,11 +17,13 @@ export * from './conversation';
 export * from './conversationInput';
 export * from './conversationType';
 export * from './conversationUpdate';
+export * from './followStatus';
 export * from './friendRequest';
 export * from './friendRequestInput';
 export * from './friendRequestStatus';
 export * from './friendshipStatus';
 export * from './friendshipStatusStatus';
+export * from './getAdminReportsParams';
 export * from './groupInput';
 export * from './healthStatus';
 export * from './listFriendsParams';
@@ -30,6 +35,7 @@ export * from './messageReaction';
 export * from './messageReactionInput';
 export * from './notification';
 export * from './notificationType';
+export * from './okResponse';
 export * from './participantInput';
 export * from './post';
 export * from './postInput';
@@ -37,6 +43,10 @@ export * from './postReaction';
 export * from './reactionInput';
 export * from './reactionInputType';
 export * from './registerInput';
+export * from './report';
+export * from './reportInput';
+export * from './reportInputReason';
+export * from './reportStatus';
 export * from './searchUsersParams';
 export * from './unreadCount';
 export * from './uploadResult';

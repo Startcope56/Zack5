@@ -10,4 +10,6 @@ export interface PostInput {
   content: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  bgColor?: string | null;
 }

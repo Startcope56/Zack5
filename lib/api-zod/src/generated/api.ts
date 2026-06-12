@@ -51,6 +51,11 @@ export const LoginResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }),
   "token": zod.string()
@@ -71,6 +76,11 @@ export const GetMeResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })
 
@@ -107,6 +117,11 @@ export const SearchUsersResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })
 export const SearchUsersResponse = zod.array(SearchUsersResponseItem)
@@ -130,6 +145,11 @@ export const GetUserResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })
 
@@ -160,6 +180,11 @@ export const UpdateUserResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })
 
@@ -173,7 +198,128 @@ export const GetUserStatsParams = zod.object({
 
 export const GetUserStatsResponse = zod.object({
   "friendCount": zod.number(),
-  "postCount": zod.number()
+  "postCount": zod.number(),
+  "followerCount": zod.number(),
+  "followingCount": zod.number()
+})
+
+
+/**
+ * @summary Follow a user
+ */
+export const FollowUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const FollowUserResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().nullish()
+})
+
+
+/**
+ * @summary Unfollow a user
+ */
+export const UnfollowUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UnfollowUserResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get follow status for a user
+ */
+export const GetFollowStatusParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFollowStatusResponse = zod.object({
+  "isFollowing": zod.boolean(),
+  "followerCount": zod.number(),
+  "followingCount": zod.number()
+})
+
+
+/**
+ * @summary Get followers of a user
+ */
+export const GetFollowersParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFollowersResponseItem = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+})
+export const GetFollowersResponse = zod.array(GetFollowersResponseItem)
+
+
+/**
+ * @summary Get users followed by a user
+ */
+export const GetFollowingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFollowingResponseItem = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+})
+export const GetFollowingResponse = zod.array(GetFollowingResponseItem)
+
+
+/**
+ * @summary Claim the free blue badge (3 hour window)
+ */
+export const ClaimBlueBadgeResponse = zod.object({
+  "ok": zod.boolean(),
+  "blueBadge": zod.boolean(),
+  "expiresAt": zod.coerce.date().nullish(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Report a user profile
+ */
+export const ReportUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReportUserBody = zod.object({
+  "reason": zod.enum(['sexual_content', 'harassment', 'hate_speech', 'violence', 'spam'])
 })
 
 
@@ -195,6 +341,11 @@ export const ListFriendsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })
 export const ListFriendsResponse = zod.array(ListFriendsResponseItem)
@@ -219,6 +370,11 @@ export const ListFriendRequestsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "addressee": zod.object({
@@ -232,6 +388,11 @@ export const ListFriendRequestsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "createdAt": zod.coerce.date()
@@ -296,6 +457,7 @@ export const ListPostsResponseItem = zod.object({
   "userId": zod.number(),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish(),
   "author": zod.object({
   "id": zod.number(),
   "email": zod.string(),
@@ -307,6 +469,11 @@ export const ListPostsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -325,7 +492,8 @@ export const ListPostsResponse = zod.array(ListPostsResponseItem)
  */
 export const CreatePostBody = zod.object({
   "content": zod.string(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish()
 })
 
 
@@ -341,6 +509,7 @@ export const GetPostResponse = zod.object({
   "userId": zod.number(),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish(),
   "author": zod.object({
   "id": zod.number(),
   "email": zod.string(),
@@ -352,6 +521,11 @@ export const GetPostResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -388,6 +562,7 @@ export const ReactToPostResponse = zod.object({
   "userId": zod.number(),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish(),
   "author": zod.object({
   "id": zod.number(),
   "email": zod.string(),
@@ -399,6 +574,11 @@ export const ReactToPostResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -423,6 +603,7 @@ export const RemovePostReactionResponse = zod.object({
   "userId": zod.number(),
   "content": zod.string(),
   "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish(),
   "author": zod.object({
   "id": zod.number(),
   "email": zod.string(),
@@ -434,6 +615,11 @@ export const RemovePostReactionResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -469,6 +655,11 @@ export const ListPostCommentsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "createdAt": zod.coerce.date()
@@ -498,6 +689,18 @@ export const DeletePostCommentParams = zod.object({
 
 
 /**
+ * @summary Report a post
+ */
+export const ReportPostParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReportPostBody = zod.object({
+  "reason": zod.enum(['sexual_content', 'harassment', 'hate_speech', 'violence', 'spam'])
+})
+
+
+/**
  * @summary List conversations
  */
 export const ListConversationsResponseItem = zod.object({
@@ -517,6 +720,11 @@ export const ListConversationsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastMessage": zod.object({
@@ -536,6 +744,11 @@ export const ListConversationsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -554,6 +767,11 @@ export const ListConversationsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })).optional(),
@@ -590,6 +808,11 @@ export const CreateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastMessage": zod.object({
@@ -609,6 +832,11 @@ export const CreateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -627,6 +855,11 @@ export const CreateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })).optional(),
@@ -645,6 +878,89 @@ export const CreateGroupConversationBody = zod.object({
   "name": zod.string(),
   "pictureUrl": zod.string().nullish(),
   "participantIds": zod.array(zod.number())
+})
+
+
+/**
+ * @summary Start or get Blue AI conversation
+ */
+export const StartBlueAIConversationResponse = zod.object({
+  "id": zod.number(),
+  "type": zod.enum(['direct', 'group']),
+  "name": zod.string().nullish(),
+  "pictureUrl": zod.string().nullish(),
+  "backgroundTheme": zod.string().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "lastMessage": zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "senderId": zod.number(),
+  "content": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "sender": zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}).optional(),
+  "reactions": zod.array(zod.object({
+  "id": zod.number(),
+  "messageId": zod.number(),
+  "userId": zod.number(),
+  "emoji": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}).optional()
+})).optional(),
+  "seenBy": zod.array(zod.number()).optional(),
+  "createdAt": zod.coerce.date()
+}).optional(),
+  "unreadCount": zod.number().optional(),
+  "createdAt": zod.coerce.date()
 })
 
 
@@ -672,6 +988,11 @@ export const GetConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastMessage": zod.object({
@@ -691,6 +1012,11 @@ export const GetConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -709,6 +1035,11 @@ export const GetConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })).optional(),
@@ -750,6 +1081,11 @@ export const UpdateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastMessage": zod.object({
@@ -769,6 +1105,11 @@ export const UpdateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -787,6 +1128,11 @@ export const UpdateConversationResponse = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })).optional(),
@@ -822,6 +1168,11 @@ export const ListMessagesResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "reactions": zod.array(zod.object({
@@ -840,6 +1191,11 @@ export const ListMessagesResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })).optional(),
@@ -859,6 +1215,14 @@ export const SendMessageParams = zod.object({
 export const SendMessageBody = zod.object({
   "content": zod.string(),
   "imageUrl": zod.string().nullish()
+})
+
+
+/**
+ * @summary Upload an image in a message
+ */
+export const UploadMessageImageParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 
@@ -886,11 +1250,11 @@ export const MarkConversationReadParams = zod.object({
 /**
  * @summary Add participant to group
  */
-export const AddGroupParticipantParams = zod.object({
+export const AddParticipantParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const AddGroupParticipantBody = zod.object({
+export const AddParticipantBody = zod.object({
   "userId": zod.number()
 })
 
@@ -898,7 +1262,7 @@ export const AddGroupParticipantBody = zod.object({
 /**
  * @summary Remove participant from group
  */
-export const RemoveGroupParticipantParams = zod.object({
+export const RemoveParticipantParams = zod.object({
   "id": zod.coerce.number(),
   "userId": zod.coerce.number()
 })
@@ -910,7 +1274,7 @@ export const RemoveGroupParticipantParams = zod.object({
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "type": zod.enum(['friend_request', 'friend_accepted', 'post_reaction', 'post_comment', 'message']),
+  "type": zod.enum(['friend_request', 'friend_accepted', 'post_reaction', 'post_comment', 'message', 'blue_badge', 'report_received', 'follow']),
   "fromUserId": zod.number().nullish(),
   "fromUser": zod.object({
   "id": zod.number(),
@@ -923,6 +1287,11 @@ export const ListNotificationsResponseItem = zod.object({
   "website": zod.string().nullish(),
   "privacy": zod.enum(['public', 'friends']).optional(),
   "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "postId": zod.number().nullish(),
@@ -947,6 +1316,135 @@ export const GetUnreadCountResponse = zod.object({
  */
 export const MarkNotificationReadParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Delete a notification
+ */
+export const DeleteNotificationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get all reports (admin only)
+ */
+export const GetAdminReportsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const GetAdminReportsResponseItem = zod.object({
+  "id": zod.number(),
+  "reporterId": zod.number(),
+  "reportedPostId": zod.number().nullish(),
+  "reportedUserId": zod.number().nullish(),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'resolved', 'dismissed']),
+  "createdAt": zod.coerce.date(),
+  "reporter": zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}).optional(),
+  "reportedUser": zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}).optional(),
+  "reportedPost": zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "content": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "bgColor": zod.string().nullish(),
+  "author": zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "profilePicture": zod.string().nullish(),
+  "coverPicture": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "privacy": zod.enum(['public', 'friends']).optional(),
+  "isAdmin": zod.boolean().optional(),
+  "isBlueAI": zod.boolean().optional(),
+  "blueBadge": zod.boolean().optional(),
+  "blueBadgeClaimedAt": zod.coerce.date().nullish(),
+  "restricted": zod.boolean().optional(),
+  "banned": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}).optional(),
+  "reactions": zod.array(zod.object({
+  "type": zod.string(),
+  "count": zod.number()
+})).optional(),
+  "commentCount": zod.number().optional(),
+  "myReaction": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}).optional()
+})
+export const GetAdminReportsResponse = zod.array(GetAdminReportsResponseItem)
+
+
+/**
+ * @summary Take action on a report (admin only)
+ */
+export const AdminReportActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminReportActionBody = zod.object({
+  "action": zod.enum(['remove_post', 'restrict_account', 'remove_account', 'ban_account', 'dismiss_report', 'restore_account'])
+})
+
+export const AdminReportActionResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().nullish()
+})
+
+
+/**
+ * @summary Take action on a user (admin only)
+ */
+export const AdminUserActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUserActionBody = zod.object({
+  "action": zod.enum(['remove_post', 'restrict_account', 'remove_account', 'ban_account', 'dismiss_report', 'restore_account'])
+})
+
+export const AdminUserActionResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().nullish()
 })
 
 

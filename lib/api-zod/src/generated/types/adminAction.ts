@@ -5,10 +5,8 @@
  * Blue Media social platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminActionAction } from './adminActionAction';
 
-export interface UserStats {
-  friendCount: number;
-  postCount: number;
-  followerCount: number;
-  followingCount: number;
+export interface AdminAction {
+  action: AdminActionAction;
 }

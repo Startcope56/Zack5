@@ -41,8 +41,8 @@ router.get("/notifications/unread-count", requireAuth, async (req, res): Promise
     .select()
     .from(notificationsTable)
     .where(eq(notificationsTable.userId, me.id));
-  const count = notifications.filter(n => !n.read).length;
-  res.json({ count });
+  const cnt = notifications.filter(n => !n.read).length;
+  res.json({ count: cnt });
 });
 
 router.post("/notifications/read-all", requireAuth, async (req, res): Promise<void> => {
@@ -54,8 +54,19 @@ router.post("/notifications/read-all", requireAuth, async (req, res): Promise<vo
 router.post("/notifications/:id/read", requireAuth, async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  await db.update(notificationsTable).set({ read: true }).where(eq(notificationsTable.id, id));
+  const me = getUser(req);
+  await db.update(notificationsTable).set({ read: true })
+    .where(eq(notificationsTable.id, id));
   res.json({ ok: true });
+});
+
+router.delete("/notifications/:id", requireAuth, async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  const me = getUser(req);
+  await db.delete(notificationsTable)
+    .where(eq(notificationsTable.id, id));
+  res.status(204).send();
 });
 
 export default router;

@@ -1,15 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { useListPosts, useCreatePost, useReactToPost, useRemovePostReaction, useListPostComments, useAddPostComment, getListPostsQueryKey, getListPostCommentsQueryKey, ReactionInputType } from "@workspace/api-client-react";
+import {
+  useListPosts, useCreatePost, useReactToPost, useRemovePostReaction,
+  useListPostComments, useAddPostComment, useDeletePost, useReportPost,
+  getListPostsQueryKey, getListPostCommentsQueryKey, ReactionInputType,
+} from "@workspace/api-client-react";
 import type { Comment } from "@workspace/api-client-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, MessageSquare, Share2, Send, X } from "lucide-react";
+import { Image as ImageIcon, MessageSquare, Share2, Send, X, MoreHorizontal, Trash2, Flag, Palette } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/lib/upload";
 import { getSocket } from "@/lib/socket";
 import { useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const REACTIONS = [
   { type: "heart", emoji: "🩷", label: "Love" },
@@ -18,20 +24,55 @@ const REACTIONS = [
   { type: "angry", emoji: "😡", label: "Angry" },
 ];
 
+const BG_COLORS = [
+  { label: "None", value: null, preview: "#ffffff" },
+  { label: "Blue", value: "linear-gradient(135deg,#1877f2,#0a6bc7)", preview: "#1877f2" },
+  { label: "Sunset", value: "linear-gradient(135deg,#f093fb,#f5576c)", preview: "#f093fb" },
+  { label: "Ocean", value: "linear-gradient(135deg,#4facfe,#00f2fe)", preview: "#4facfe" },
+  { label: "Forest", value: "linear-gradient(135deg,#43e97b,#38f9d7)", preview: "#43e97b" },
+  { label: "Night", value: "linear-gradient(135deg,#0c3483,#a2b6df)", preview: "#0c3483" },
+  { label: "Gold", value: "linear-gradient(135deg,#f6d365,#fda085)", preview: "#f6d365" },
+  { label: "Rose", value: "linear-gradient(135deg,#fbc2eb,#a6c1ee)", preview: "#fbc2eb" },
+];
+
+const REPORT_REASONS = [
+  { value: "sexual_content", label: "Sexual Content" },
+  { value: "harassment", label: "Harassment / Bullying" },
+  { value: "hate_speech", label: "Hate Speech" },
+  { value: "violence", label: "Violence" },
+  { value: "spam", label: "Spam / Fake" },
+];
+
+function BadgeIcon() {
+  return (
+    <span title="Blue Badge — Verified" className="inline-flex items-center justify-center w-4 h-4 rounded-full text-white text-[8px] font-bold ml-0.5 shrink-0"
+      style={{ background: "#1877f2" }}>✓</span>
+  );
+}
+
 function CommentSection({ postId }: { postId: number }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
   const { data: comments } = useListPostComments(postId, { query: { queryKey: getListPostCommentsQueryKey(postId) } });
   const addComment = useAddPostComment();
+  const { toast } = useToast();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
-    await addComment.mutateAsync({ id: postId, data: { content: comment.trim() } });
-    setComment("");
-    queryClient.invalidateQueries({ queryKey: getListPostCommentsQueryKey(postId) });
-    queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+    try {
+      await addComment.mutateAsync({ id: postId, data: { content: comment.trim() } });
+      setComment("");
+      queryClient.invalidateQueries({ queryKey: getListPostCommentsQueryKey(postId) });
+      queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+    } catch (err: any) {
+      if (err?.response?.data?.profanity) {
+        toast({ title: "❌ Hindi pwede ang masamang salita!", description: "Keep your comments respectful.", variant: "destructive" });
+      } else {
+        toast({ title: "Failed to comment", description: err.message, variant: "destructive" });
+      }
+    }
   };
 
   return (
@@ -47,9 +88,12 @@ function CommentSection({ postId }: { postId: number }) {
             </Avatar>
           </Link>
           <div className="flex-1 bg-gray-100 rounded-2xl px-3 py-1.5">
-            <Link href={`/profile/${c.author?.id}`}>
-              <span className="font-semibold text-xs text-gray-800 hover:underline cursor-pointer">{c.author?.name}</span>
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link href={`/profile/${c.author?.id}`}>
+                <span className="font-semibold text-xs text-gray-800 hover:underline cursor-pointer">{c.author?.name}</span>
+              </Link>
+              {(c.author as any)?.blueBadge && <BadgeIcon />}
+            </div>
             <p className="text-sm text-gray-700">{c.content}</p>
           </div>
         </div>
@@ -95,13 +139,23 @@ function ReactionPicker({ onPick }: { onPick: (type: string) => void }) {
   );
 }
 
-function PostCard({ post }: { post: any }) {
+function PostCard({ post, currentUserId, isAdmin }: { post: any; currentUserId: number; isAdmin: boolean }) {
   const [showComments, setShowComments] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const reactPost = useReactToPost();
   const unreactPost = useRemovePostReaction();
+  const deletePost = useDeletePost();
+  const reportPost = useReportPost();
   const pickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const isOwnPost = post.userId === currentUserId;
+  const canDelete = isOwnPost || isAdmin;
 
   const toggleReaction = async (type: string) => {
     setShowPicker(false);
@@ -123,19 +177,50 @@ function PostCard({ post }: { post: any }) {
     }
   };
 
+  const handleDelete = async () => {
+    setShowMenu(false);
+    try {
+      await deletePost.mutateAsync({ id: post.id });
+      queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+      toast({ title: "Post deleted" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleReport = async () => {
+    if (!reportReason) return;
+    try {
+      const res = await reportPost.mutateAsync({ id: post.id, data: { reason: reportReason as any } });
+      setReportOpen(false);
+      setReportReason("");
+      toast({ title: "📩 " + (res.message || "Report submitted") });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     if (!showPicker) return;
     const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowPicker(false);
-      }
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showPicker]);
 
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
   const totalReactions = post.reactions?.reduce((s: number, r: any) => s + r.count, 0) ?? 0;
   const myReactionEmoji = REACTIONS.find(r => r.type === post.myReaction)?.emoji;
+  const hasBgColor = !!post.bgColor;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -149,20 +234,71 @@ function PostCard({ post }: { post: any }) {
             </AvatarFallback>
           </Avatar>
         </Link>
-        <div>
-          <Link href={`/profile/${post.author?.id}`}>
-            <p className="font-semibold text-gray-900 text-sm hover:underline cursor-pointer leading-none">{post.author?.name}</p>
-          </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <Link href={`/profile/${post.author?.id}`}>
+              <p className="font-semibold text-gray-900 text-sm hover:underline cursor-pointer leading-none">{post.author?.name}</p>
+            </Link>
+            {post.author?.blueBadge && <BadgeIcon />}
+            {post.author?.isAdmin && (
+              <span className="px-1.5 py-0.5 text-[9px] bg-yellow-100 text-yellow-700 rounded-full font-bold uppercase tracking-wide ml-0.5">Admin</span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">
             {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
           </p>
         </div>
+
+        {/* 3-dots menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(v => !v)}
+            className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-30 w-44 overflow-hidden">
+              {canDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Post
+                </button>
+              )}
+              {!isOwnPost && (
+                <button
+                  onClick={() => { setShowMenu(false); setReportOpen(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <Flag className="h-4 w-4" />
+                  Report Post
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 pb-3">
-        <p className="text-gray-800 text-sm whitespace-pre-wrap leading-relaxed">{post.content}</p>
-      </div>
+      {/* Content — supports color background */}
+      {hasBgColor ? (
+        <div className="mx-4 mb-3 rounded-xl overflow-hidden">
+          <div
+            className="flex items-center justify-center min-h-[160px] px-6 py-8 text-white text-center"
+            style={{ background: post.bgColor }}
+          >
+            <p className="text-white text-lg font-bold whitespace-pre-wrap leading-snug drop-shadow-sm">
+              {post.content}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="px-4 pb-3">
+          <p className="text-gray-800 text-sm whitespace-pre-wrap leading-relaxed">{post.content}</p>
+        </div>
+      )}
 
       {post.imageUrl && (
         <div className="border-y border-gray-100">
@@ -191,8 +327,6 @@ function PostCard({ post }: { post: any }) {
       {/* Action Buttons */}
       <div className="border-t border-gray-100 mx-4" />
       <div className="flex px-2 py-1">
-
-        {/* React button */}
         <div className="relative flex-1" ref={pickerRef}>
           {showPicker && <ReactionPicker onPick={toggleReaction} />}
           <button
@@ -223,6 +357,35 @@ function PostCard({ post }: { post: any }) {
       </div>
 
       {showComments && <CommentSection postId={post.id} />}
+
+      {/* Report Dialog */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Report Post 🚩</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Why are you reporting this post?</p>
+            {REPORT_REASONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setReportReason(r.value)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm text-left transition ${
+                  reportReason === r.value ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                {reportReason === r.value && <span>●</span>} {r.label}
+              </button>
+            ))}
+            <Button
+              onClick={handleReport}
+              className="w-full"
+              variant="destructive"
+              disabled={!reportReason || reportPost.isPending}
+            >
+              {reportPost.isPending ? "Submitting..." : "Submit Report"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -235,7 +398,9 @@ export default function FeedPage() {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [bgColor, setBgColor] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -248,7 +413,10 @@ export default function FeedPage() {
     socket.on("new_post", () => {
       queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
     });
-    return () => { socket.off("new_post"); };
+    socket.on("post_deleted", () => {
+      queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
+    });
+    return () => { socket.off("new_post"); socket.off("post_deleted"); };
   }, [token, queryClient]);
 
   const openComposer = () => {
@@ -260,6 +428,8 @@ export default function FeedPage() {
     setOpen(false);
     setContent("");
     setImageFile(null);
+    setBgColor(null);
+    setShowBgPicker(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -267,14 +437,18 @@ export default function FeedPage() {
     if (!content.trim() && !imageFile) return;
     try {
       setIsUploading(true);
-      const res = await createPost.mutateAsync({ data: { content } });
+      const res = await createPost.mutateAsync({ data: { content, bgColor } });
       if (imageFile && token) {
         await uploadFile(`/api/posts/${res.id}/upload-image`, imageFile, token);
       }
       closeComposer();
       queryClient.invalidateQueries({ queryKey: getListPostsQueryKey() });
     } catch (err: any) {
-      toast({ title: "Failed to post", description: err.message, variant: "destructive" });
+      if (err?.response?.data?.profanity) {
+        toast({ title: "❌ Hindi pwede ang masamang salita!", description: "Your post contains inappropriate language. Keep it respectful!", variant: "destructive" });
+      } else {
+        toast({ title: "Failed to post", description: err.message, variant: "destructive" });
+      }
     } finally {
       setIsUploading(false);
     }
@@ -299,12 +473,18 @@ export default function FeedPage() {
             What's on your mind, {user?.name?.split(" ")[0]}?
           </button>
         </div>
-        <div className="mt-2 pt-2 border-t border-gray-100 flex">
+        <div className="mt-2 pt-2 border-t border-gray-100 flex gap-2">
           <button
             onClick={openComposer}
             className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-green-600 hover:bg-green-50 active:bg-green-100 text-sm font-medium transition"
           >
             <ImageIcon className="h-4 w-4" /> Photo
+          </button>
+          <button
+            onClick={() => { openComposer(); setShowBgPicker(true); }}
+            className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-purple-600 hover:bg-purple-50 active:bg-purple-100 text-sm font-medium transition"
+          >
+            <Palette className="h-4 w-4" /> Color
           </button>
         </div>
       </div>
@@ -313,9 +493,9 @@ export default function FeedPage() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40"
           onClick={e => { if (e.target === e.currentTarget) closeComposer(); }}>
-          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
               <span className="font-bold text-gray-900">Create Post</span>
               <button onClick={closeComposer} className="p-1 rounded-full hover:bg-gray-100 transition">
                 <X className="h-5 w-5 text-gray-500" />
@@ -330,20 +510,56 @@ export default function FeedPage() {
                   {user?.name?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-semibold text-gray-900">{user?.name}</span>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-gray-900">{user?.name}</span>
+                {(user as any)?.blueBadge && <BadgeIcon />}
+              </div>
             </div>
 
-            {/* Text area */}
+            {/* Color background preview + textarea */}
             <div className="px-4 pt-2 pb-3">
-              <textarea
-                ref={textareaRef}
-                placeholder={`What's on your mind, ${user?.name?.split(" ")[0]}?`}
-                className="w-full resize-none outline-none text-gray-800 text-base placeholder-gray-400 bg-transparent min-h-[100px]"
-                rows={4}
-                value={content}
-                onChange={e => setContent(e.target.value)}
-              />
+              {bgColor ? (
+                <div className="rounded-xl overflow-hidden mb-2" style={{ background: bgColor, minHeight: 120 }}>
+                  <textarea
+                    ref={textareaRef}
+                    placeholder="What's on your mind?"
+                    className="w-full resize-none outline-none text-white text-lg font-bold placeholder-white/60 bg-transparent p-4 min-h-[120px] text-center"
+                    rows={4}
+                    value={content}
+                    onChange={e => setContent(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <textarea
+                  ref={textareaRef}
+                  placeholder={`What's on your mind, ${user?.name?.split(" ")[0]}?`}
+                  className="w-full resize-none outline-none text-gray-800 text-base placeholder-gray-400 bg-transparent min-h-[100px]"
+                  rows={4}
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                />
+              )}
             </div>
+
+            {/* Background color picker */}
+            {showBgPicker && (
+              <div className="px-4 pb-3">
+                <p className="text-xs font-semibold text-gray-500 mb-2">Background Color</p>
+                <div className="flex gap-2 flex-wrap">
+                  {BG_COLORS.map(c => (
+                    <button
+                      key={c.label}
+                      onClick={() => setBgColor(c.value)}
+                      className={`w-8 h-8 rounded-full border-2 transition ${
+                        bgColor === c.value ? "border-blue-500 scale-110" : "border-gray-200"
+                      }`}
+                      style={{ background: c.value || "#ffffff" }}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Image preview */}
             {imageFile && (
@@ -358,12 +574,18 @@ export default function FeedPage() {
 
             {/* Footer */}
             <div className="px-4 pb-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-              <div>
+              <div className="flex gap-1">
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*"
                   onChange={e => setImageFile(e.target.files?.[0] || null)} />
                 <button onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-green-600 hover:bg-green-50 text-sm font-medium transition">
-                  <ImageIcon className="h-4 w-4" /> Add Photo
+                  <ImageIcon className="h-4 w-4" /> Photo
+                </button>
+                <button
+                  onClick={() => setShowBgPicker(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${showBgPicker ? "bg-purple-100 text-purple-600" : "text-purple-600 hover:bg-purple-50"}`}
+                >
+                  <Palette className="h-4 w-4" /> Color
                 </button>
               </div>
               <button
@@ -398,7 +620,14 @@ export default function FeedPage() {
         </div>
       )}
 
-      {posts?.map(post => <PostCard key={post.id} post={post} />)}
+      {posts?.map(post => (
+        <PostCard
+          key={post.id}
+          post={post}
+          currentUserId={user?.id || 0}
+          isAdmin={user?.isAdmin || false}
+        />
+      ))}
 
       {!isLoading && posts?.length === 0 && (
         <div className="text-center py-16 text-gray-400">

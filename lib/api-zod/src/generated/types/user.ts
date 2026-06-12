@@ -23,5 +23,11 @@ export interface User {
   website?: string | null;
   privacy?: UserPrivacy;
   isAdmin?: boolean;
+  isBlueAI?: boolean;
+  blueBadge?: boolean;
+  /** @nullable */
+  blueBadgeClaimedAt?: Date | null;
+  restricted?: boolean;
+  banned?: boolean;
   createdAt: Date;
 }

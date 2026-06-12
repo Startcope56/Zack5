@@ -13,13 +13,13 @@ import ChatListPage from "@/pages/chat-list";
 import ChatRoomPage from "@/pages/chat-room";
 import NotificationsPage from "@/pages/notifications";
 import AdminPage from "@/pages/admin";
+import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType<any>, adminOnly?: boolean }) {
   const { user, isLoading } = useAuth();
-  const [location] = useLocation();
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -68,6 +68,9 @@ function Router() {
       </Route>
       <Route path="/admin">
         <Layout><ProtectedRoute component={AdminPage} adminOnly={true} /></Layout>
+      </Route>
+      <Route path="/settings">
+        <Layout><ProtectedRoute component={SettingsPage} /></Layout>
       </Route>
       <Route>
         <Layout><NotFound /></Layout>

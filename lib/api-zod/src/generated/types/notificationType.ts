@@ -15,4 +15,7 @@ export const NotificationType = {
   post_reaction: 'post_reaction',
   post_comment: 'post_comment',
   message: 'message',
+  blue_badge: 'blue_badge',
+  report_received: 'report_received',
+  follow: 'follow',
 } as const;

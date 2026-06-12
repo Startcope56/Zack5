@@ -14,6 +14,8 @@ export interface Post {
   content: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  bgColor?: string | null;
   author?: User;
   reactions?: PostReaction[];
   commentCount?: number;
